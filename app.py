@@ -16,11 +16,7 @@ with tab1:
     suumo_file = st.file_uploader("Upload SUUMO Excel file", type=["xlsx", "csv"], key="suumo_uploader")
     
     def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Placeholder SUUMO cleaning logic.
-        Replace this with your actual SUUMO cleaning rules.
-        """
-        # Example: drop empty rows
+        """Placeholder SUUMO cleaning logic."""
         df = df.dropna(how="all")
         return df
 
@@ -55,13 +51,31 @@ with tab2:
     
     def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Placeholder HOMES cleaning logic.
-        Replace this with your actual HOMES cleaning rules.
+        HOMES cleaning logic: reshape long format to wide format.
+        Each company becomes one row with fields as columns.
         """
-        # Example: drop empty rows and remove duplicates
-        df = df.dropna(how="all")
-        df = df.drop_duplicates()
-        return df
+        # Fill empty repeated values for company name / URLs
+        df['Company_Name'] = df['Company_Name'].fillna(method='ffill')
+        df['Link_to_the_Homepage'] = df['Link_to_the_Homepage'].fillna(method='ffill')
+        df['URL'] = df['URL'].fillna(method='ffill')
+
+        # Pivot: Field1 becomes columns, Field2 becomes values
+        df_wide = df.pivot_table(
+            index=['Company_Name', 'Link_to_the_Homepage', 'URL'],
+            columns='Field1',
+            values='Field2',
+            aggfunc=lambda x: ' '.join(str(v) for v in x)
+        ).reset_index()
+
+        # Reorder / select desired columns
+        desired_columns = [
+            'Company_Name', 'Link_to_the_Homepage', 'URL',
+            '所在地', '交通', '営業時間', '定休日',
+            'TEL', 'FAX', '免許番号', '所属団体名', '保証協会', '屋号'
+        ]
+        df_wide = df_wide[[c for c in desired_columns if c in df_wide.columns]]
+
+        return df_wide
 
     if homes_file is not None:
         if homes_file.name.endswith(".csv"):
