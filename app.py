@@ -15,33 +15,19 @@ with tab1:
     st.header("SUUMO Data Cleaner")
     suumo_file = st.file_uploader("Upload SUUMO Excel file", type=["xlsx", "csv"], key="suumo_uploader")
     
-    def clean_suumo(file_path: str, output_path: str):
-        """
-        Cleans SUUMO company data by consolidating duplicates from two sets of columns,
-        preserving blanks, and outputs a clean Excel file.
-        
-        Parameters:
-        - file_path: Path to the input CSV/Excel file
-        - output_path: Path to save the cleaned Excel file
-        """
-        # Load data
-        if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        else:
-            df = pd.read_excel(file_path)
-        
+    def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
         output_rows = []
         seen_companies = set()
     
         for idx, row in df.iterrows():
             prefecture = row['Text']
-            
+    
             # First company set
             company1 = row.get('Field1_text', '')
             link1 = row.get('Field1_links', '')
             tel1 = row.get('Field2', '')
             address1 = row.get('Field3', '')
-            
+    
             if company1 and company1 not in seen_companies:
                 output_rows.append({
                     'Prefecture': prefecture,
@@ -51,13 +37,13 @@ with tab1:
                     'TEL': tel1
                 })
                 seen_companies.add(company1)
-            
+    
             # Second company set
             company2 = row.get('Field4_text', '')
             link2 = row.get('Field4_links', '')
             tel2 = row.get('Field5', '')
             address2 = row.get('Field6', '')
-            
+    
             if company2 and company2 not in seen_companies:
                 output_rows.append({
                     'Prefecture': prefecture,
@@ -67,6 +53,9 @@ with tab1:
                     'TEL': tel2
                 })
                 seen_companies.add(company2)
+    
+        df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
+        return df_clean
         
     # Create DataFrame and save
     df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
@@ -78,15 +67,15 @@ with tab1:
             df_suumo = pd.read_csv(suumo_file)
         else:
             df_suumo = pd.read_excel(suumo_file)
-        
+    
         st.subheader("Preview of Uploaded SUUMO Data")
         st.dataframe(df_suumo.head())
-
-        cleaned_suumo = clean_suumo(df_suumo)
-
+    
+        cleaned_suumo = clean_suumo(df_suumo)  # now returns DataFrame
+    
         st.subheader("Preview of Cleaned SUUMO Data")
         st.dataframe(cleaned_suumo.head())
-
+    
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
             cleaned_suumo.to_excel(writer, index=False, sheet_name="CleanedSUUMO")
@@ -97,72 +86,74 @@ with tab1:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+
 # ---------- HOMES Tab ----------
 with tab2:
     st.header("HOMES Data Cleaner")
     homes_file = st.file_uploader("Upload HOMES Excel file", type=["xlsx", "csv"], key="homes_uploader")
 
-def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    HOMES cleaning logic:
-    - Preserve original row order (first occurrence of company)
-    - Reshape long -> wide manually (Field1 becomes columns)
-    - Use kanji from Field2 for company name
-    """
-    # Fill repeated URLs if missing
-    df['Link_to_the_Homepage'] = df['Link_to_the_Homepage'].fillna(method='ffill')
-    df['URL'] = df['URL'].fillna(method='ffill')
-
-    # Dictionary to hold processed companies
-    processed = []
-    seen = {}  # To preserve original order
-
-    for _, row in df.iterrows():
-        company_key = row['Company_Name']
-        if company_key not in seen:
-            # Initialize a new company row
-            company_dict = {
-                'Company_Name': None,  # kanji will be filled later
-                'Link_to_the_Homepage': row['Link_to_the_Homepage'],
-                'HOMES Webpage URL': row['URL'],
-                '所在地': '',
-                '交通': '',
-                '営業時間': '',
-                '定休日': '',
-                'TEL': '',
-                'FAX': '',
-                '免許番号': '',
-                '所属団体名': '',
-                '保証協会': '',
-                '屋号': ''
-            }
-            processed.append(company_dict)
-            seen[company_key] = company_dict
-
-        # Current company dict
-        company_dict = seen[company_key]
-
-        # If Field1 is 会社名, replace Company_Name with kanji from Field2
-        if row['Field1'] == '会社名':
-            company_dict['Company_Name'] = row['Field2']
-        else:
-            # For other fields, add the value
-            if row['Field1'] in company_dict:
-                # Append if value already exists
-                if company_dict[row['Field1']]:
-                    company_dict[row['Field1']] += ' ' + str(row['Field2'])
-                else:
-                    company_dict[row['Field1']] = row['Field2']
-
-    # Convert to DataFrame
-    df_wide = pd.DataFrame(processed)
-    # Remove trailing 'map/' from HOMES Webpage URL
-    df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.rstrip('/')  # remove trailing slash first
-    df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.replace('map$', '', regex=True)
-    # Remove '地図を見る' from 所在地 column
-    df_wide['所在地'] = df_wide['所在地'].str.replace('地図を見る', '', regex=False).str.strip()
-    return df_wide
-
+    def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        HOMES cleaning logic:
+        - Preserve original row order (first occurrence of company)
+        - Reshape long -> wide manually (Field1 becomes columns)
+        - Use kanji from Field2 for company name
+        """
+        # Fill repeated URLs if missing
+        df['Link_to_the_Homepage'] = df['Link_to_the_Homepage'].fillna(method='ffill')
+        df['URL'] = df['URL'].fillna(method='ffill')
+    
+        # Dictionary to hold processed companies
+        processed = []
+        seen = {}  # To preserve original order
+    
+        for _, row in df.iterrows():
+            company_key = row['Company_Name']
+            if company_key not in seen:
+                # Initialize a new company row
+                company_dict = {
+                    'Company_Name': None,  # kanji will be filled later
+                    'Link_to_the_Homepage': row['Link_to_the_Homepage'],
+                    'HOMES Webpage URL': row['URL'],
+                    '所在地': '',
+                    '交通': '',
+                    '営業時間': '',
+                    '定休日': '',
+                    'TEL': '',
+                    'FAX': '',
+                    '免許番号': '',
+                    '所属団体名': '',
+                    '保証協会': '',
+                    '屋号': ''
+                }
+                processed.append(company_dict)
+                seen[company_key] = company_dict
+    
+            # Current company dict
+            company_dict = seen[company_key]
+    
+            # If Field1 is 会社名, replace Company_Name with kanji from Field2
+            if row['Field1'] == '会社名':
+                company_dict['Company_Name'] = row['Field2']
+            else:
+                # For other fields, add the value
+                if row['Field1'] in company_dict:
+                    # Append if value already exists
+                    if company_dict[row['Field1']]:
+                        company_dict[row['Field1']] += ' ' + str(row['Field2'])
+                    else:
+                        company_dict[row['Field1']] = row['Field2']
+    
+        # Convert to DataFrame
+        df_wide = pd.DataFrame(processed)
+        df_wide = df_wide.copy()
+        # Remove trailing 'map/' from HOMES Webpage URL
+        df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.rstrip('/')  # remove trailing slash first
+        df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.replace('map$', '', regex=True)
+        # Remove '地図を見る' from 所在地 column
+        df_wide['所在地'] = df_wide['所在地'].str.replace('地図を見る', '', regex=False).str.strip()
+        return df_wide
+    
     if homes_file is not None:
         if homes_file.name.endswith(".csv"):
             df_homes = pd.read_csv(homes_file)
@@ -171,12 +162,12 @@ def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
         
         st.subheader("Preview of Uploaded HOMES Data")
         st.dataframe(df_homes.head())
-
+    
         cleaned_homes = clean_homes(df_homes)
-
+    
         st.subheader("Preview of Cleaned HOMES Data")
         st.dataframe(cleaned_homes.head())
-
+    
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
             cleaned_homes.to_excel(writer, index=False, sheet_name="CleanedHOMES")
