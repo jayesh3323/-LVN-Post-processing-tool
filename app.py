@@ -81,7 +81,7 @@ with tab2:
         if homes_file.name.endswith(".csv"):
             df_homes = pd.read_csv(homes_file)
         else:
-            df_homes = pd.read_excel(homes_file)
+            df_homes = pd.read_excel(homes_file, engine="openpyxl")
         
         st.subheader("Preview of Uploaded HOMES Data")
         st.dataframe(df_homes.head())
