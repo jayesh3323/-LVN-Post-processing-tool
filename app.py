@@ -2,47 +2,87 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-st.set_page_config(page_title="Excel Cleaner", layout="centered")
-
+st.set_page_config(page_title="Excel Data Cleaner", layout="centered")
 st.title("📊 Excel Data Cleaner")
 
-st.write("Upload your Excel file, clean it, and download the processed version.")
+st.write("Choose the data source, upload your Excel file, clean it, and download the processed file.")
 
-# File uploader
-uploaded_file = st.file_uploader("Choose an Excel or CSV file", type=["xlsx", "csv"])
+# Tabs for SUUMO and HOMES
+tab1, tab2 = st.tabs(["SUUMO", "HOMES"])
 
-def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Placeholder cleaning function.
-    Replace this with your actual cleaning rules.
-    """
-    # Example: Drop completely empty rows
-    df = df.dropna(how="all")
-    return df
+# ---------- SUUMO Tab ----------
+with tab1:
+    st.header("SUUMO Data Cleaner")
+    suumo_file = st.file_uploader("Upload SUUMO Excel file", type=["xlsx", "csv"], key="suumo_uploader")
+    
+    def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Placeholder SUUMO cleaning logic.
+        Replace this with your actual SUUMO cleaning rules.
+        """
+        # Example: drop empty rows
+        df = df.dropna(how="all")
+        return df
 
-if uploaded_file is not None:
-    # Detect file type
-    if uploaded_file.name.endswith(".csv"):
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_excel(uploaded_file)
+    if suumo_file is not None:
+        if suumo_file.name.endswith(".csv"):
+            df_suumo = pd.read_csv(suumo_file)
+        else:
+            df_suumo = pd.read_excel(suumo_file)
+        
+        st.subheader("Preview of Uploaded SUUMO Data")
+        st.dataframe(df_suumo.head())
 
-    st.subheader("Preview of Uploaded Data")
-    st.dataframe(df.head())
+        cleaned_suumo = clean_suumo(df_suumo)
 
-    # Apply cleaning
-    cleaned_df = clean_data(df)
+        st.subheader("Preview of Cleaned SUUMO Data")
+        st.dataframe(cleaned_suumo.head())
 
-    st.subheader("Preview of Cleaned Data")
-    st.dataframe(cleaned_df.head())
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+            cleaned_suumo.to_excel(writer, index=False, sheet_name="CleanedSUUMO")
+        st.download_button(
+            label="⬇️ Download Cleaned SUUMO Excel",
+            data=buffer.getvalue(),
+            file_name="cleaned_suumo.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-    # Download button
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        cleaned_df.to_excel(writer, index=False, sheet_name="CleanedData")
-    st.download_button(
-        label="⬇️ Download Cleaned Excel",
-        data=buffer.getvalue(),
-        file_name="cleaned_data.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+# ---------- HOMES Tab ----------
+with tab2:
+    st.header("HOMES Data Cleaner")
+    homes_file = st.file_uploader("Upload HOMES Excel file", type=["xlsx", "csv"], key="homes_uploader")
+    
+    def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Placeholder HOMES cleaning logic.
+        Replace this with your actual HOMES cleaning rules.
+        """
+        # Example: drop empty rows and remove duplicates
+        df = df.dropna(how="all")
+        df = df.drop_duplicates()
+        return df
+
+    if homes_file is not None:
+        if homes_file.name.endswith(".csv"):
+            df_homes = pd.read_csv(homes_file)
+        else:
+            df_homes = pd.read_excel(homes_file)
+        
+        st.subheader("Preview of Uploaded HOMES Data")
+        st.dataframe(df_homes.head())
+
+        cleaned_homes = clean_homes(df_homes)
+
+        st.subheader("Preview of Cleaned HOMES Data")
+        st.dataframe(cleaned_homes.head())
+
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+            cleaned_homes.to_excel(writer, index=False, sheet_name="CleanedHOMES")
+        st.download_button(
+            label="⬇️ Download Cleaned HOMES Excel",
+            data=buffer.getvalue(),
+            file_name="cleaned_homes.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
