@@ -16,22 +16,18 @@ with tab1:
     suumo_file = st.file_uploader("Upload SUUMO Excel file", type=["xlsx", "csv"], key="suumo_uploader")
 
     def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Cleans SUUMO company data by consolidating duplicates from two sets of columns,
-        preserving blanks, and returns a clean DataFrame.
-        """
         output_rows = []
         seen_companies = set()
-
+    
         for _, row in df.iterrows():
             prefecture = row['Text']
-
+    
             # First company set
-            company1 = row.get('Field1_text', '')
+            company1 = str(row.get('Field1_text', '')).replace('市区郡を選択', '').strip()
             link1 = row.get('Field1_links', '')
             tel1 = row.get('Field2', '')
             address1 = row.get('Field3', '')
-
+    
             if company1 and company1 not in seen_companies:
                 output_rows.append({
                     'Prefecture': prefecture,
@@ -41,13 +37,13 @@ with tab1:
                     'TEL': tel1
                 })
                 seen_companies.add(company1)
-
+    
             # Second company set
-            company2 = row.get('Field4_text', '')
+            company2 = str(row.get('Field4_text', '')).replace('市区郡を選択', '').strip()
             link2 = row.get('Field4_links', '')
             tel2 = row.get('Field5', '')
             address2 = row.get('Field6', '')
-
+    
             if company2 and company2 not in seen_companies:
                 output_rows.append({
                     'Prefecture': prefecture,
@@ -57,7 +53,7 @@ with tab1:
                     'TEL': tel2
                 })
                 seen_companies.add(company2)
-
+    
         df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
         return df_clean
 
