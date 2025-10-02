@@ -15,10 +15,63 @@ with tab1:
     st.header("SUUMO Data Cleaner")
     suumo_file = st.file_uploader("Upload SUUMO Excel file", type=["xlsx", "csv"], key="suumo_uploader")
     
-    def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
-        """Placeholder SUUMO cleaning logic."""
-        df = df.dropna(how="all")
-        return df
+    def clean_suumo(file_path: str, output_path: str):
+        """
+        Cleans SUUMO company data by consolidating duplicates from two sets of columns,
+        preserving blanks, and outputs a clean Excel file.
+        
+        Parameters:
+        - file_path: Path to the input CSV/Excel file
+        - output_path: Path to save the cleaned Excel file
+        """
+        # Load data
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
+        
+        output_rows = []
+        seen_companies = set()
+    
+        for idx, row in df.iterrows():
+            prefecture = row['Text']
+            
+            # First company set
+            company1 = row.get('Field1_text', '')
+            link1 = row.get('Field1_links', '')
+            tel1 = row.get('Field2', '')
+            address1 = row.get('Field3', '')
+            
+            if company1 and company1 not in seen_companies:
+                output_rows.append({
+                    'Prefecture': prefecture,
+                    'Company Name': company1,
+                    'Link to Suumo Webpage': link1,
+                    'Address': address1,
+                    'TEL': tel1
+                })
+                seen_companies.add(company1)
+            
+            # Second company set
+            company2 = row.get('Field4_text', '')
+            link2 = row.get('Field4_links', '')
+            tel2 = row.get('Field5', '')
+            address2 = row.get('Field6', '')
+            
+            if company2 and company2 not in seen_companies:
+                output_rows.append({
+                    'Prefecture': prefecture,
+                    'Company Name': company2,
+                    'Link to Suumo Webpage': link2,
+                    'Address': address2,
+                    'TEL': tel2
+                })
+                seen_companies.add(company2)
+        
+    # Create DataFrame and save
+    df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
+    df_clean.to_excel(output_path, index=False)
+    print(f"Cleaned SUUMO data saved to {output_path}")
 
     if suumo_file is not None:
         if suumo_file.name.endswith(".csv"):
