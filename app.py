@@ -20,37 +20,31 @@ with tab1:
         seen_companies = set()
     
         for _, row in df.iterrows():
-            prefecture = row['Text']
+            prefecture = row.get('Text', '')
+            if isinstance(prefecture, str):
+                prefecture = prefecture.replace('- 市区郡を選択', '').strip()
     
             # First company set
-            company1 = str(row.get('Field1_text', '')).replace('市区郡を選択', '').strip()
-            link1 = row.get('Field1_links', '')
-            tel1 = row.get('Field2', '')
-            address1 = row.get('Field3', '')
-    
-            if company1 and company1 not in seen_companies:
+            company1 = row.get('Field1_text', '')
+            if pd.notna(company1) and company1 != '' and company1 not in seen_companies:
                 output_rows.append({
                     'Prefecture': prefecture,
                     'Company Name': company1,
-                    'Link to Suumo Webpage': link1,
-                    'Address': address1,
-                    'TEL': tel1
+                    'Link to Suumo Webpage': row.get('Field1_links', '') or '',
+                    'TEL': row.get('Field3', '') or '',
+                    'Address': row.get('Field2', '') or ''
                 })
                 seen_companies.add(company1)
     
             # Second company set
-            company2 = str(row.get('Field4_text', '')).replace('市区郡を選択', '').strip()
-            link2 = row.get('Field4_links', '')
-            tel2 = row.get('Field5', '')
-            address2 = row.get('Field6', '')
-    
-            if company2 and company2 not in seen_companies:
+            company2 = row.get('Field4_text', '')
+            if pd.notna(company2) and company2 != '' and company2 not in seen_companies:
                 output_rows.append({
                     'Prefecture': prefecture,
                     'Company Name': company2,
-                    'Link to Suumo Webpage': link2,
-                    'Address': address2,
-                    'TEL': tel2
+                    'Link to Suumo Webpage': row.get('Field4_links', '') or '',
+                    'TEL': row.get('Field6', '') or '',
+                    'Address': row.get('Field5', '') or ''
                 })
                 seen_companies.add(company2)
     
