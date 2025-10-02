@@ -106,7 +106,8 @@ def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
     # Remove trailing 'map/' from HOMES Webpage URL
     df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.rstrip('/')  # remove trailing slash first
     df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.replace('map$', '', regex=True)
-
+    # Remove '地図を見る' from 所在地 column
+    df_wide['所在地'] = df_wide['所在地'].str.replace('地図を見る', '', regex=False).str.strip()
     return df_wide
 
     if homes_file is not None:
