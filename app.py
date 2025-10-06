@@ -96,7 +96,7 @@ with tab2:
         seen = {}  # preserve order
 
         for _, row in df.iterrows():
-            company_key = row['Company_Name']
+            company_key = str(row['Company_Name']).split(' ')[0]
             if company_key not in seen:
                 company_dict = {
                     'Company_Name': None,  # kanji
