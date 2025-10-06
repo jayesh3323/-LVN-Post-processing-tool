@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import unicodedata
 from io import BytesIO
 
 st.set_page_config(page_title="Excel Data Cleaner", layout="centered")
@@ -79,7 +80,24 @@ with tab1:
 with tab2:
     st.header("HOMES Data Cleaner")
     homes_file = st.file_uploader("Upload HOMES Excel file", type=["xlsx", "csv"], key="homes_uploader")
-
+    
+    def is_katakana_or_space(c):
+        if c in (' ', '　'):
+            return True
+        try:
+            return 'KATAKANA' in unicodedata.name(c)
+        except ValueError:
+            return False
+    
+    def extract_kanji(name):
+        name = name.strip()
+        i = len(name)
+        while i > 0:
+            i -= 1
+            if not is_katakana_or_space(name[i]):
+                break
+        return name[:i + 1].strip()
+    
     def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
         """
         Cleans HOMES company data:
@@ -91,12 +109,12 @@ with tab2:
         # Fill repeated URLs if missing
         df['Link_to_the_Homepage'] = df['Link_to_the_Homepage'].fillna(method='ffill')
         df['URL'] = df['URL'].fillna(method='ffill')
-
+    
         processed = []
         seen = {}  # preserve order
-
+    
         for _, row in df.iterrows():
-            company_key = str(row['Company_Name']).split(' ')[0]
+            company_key = str(row['Company_Name'])
             if company_key not in seen:
                 company_dict = {
                     'Company_Name': None,  # kanji
@@ -115,18 +133,19 @@ with tab2:
                 }
                 processed.append(company_dict)
                 seen[company_key] = company_dict
-
+    
             company_dict = seen[company_key]
-
+    
             if row['Field1'] == '会社名':
-                company_dict['Company_Name'] = row['Field2']
+                cleaned_field = str(row['Field2']).replace("ホームページ", "").replace("\n", " ").strip()
+                company_dict['Company_Name'] = extract_kanji(cleaned_field)
             else:
                 if row['Field1'] in company_dict:
                     if company_dict[row['Field1']]:
                         company_dict[row['Field1']] += ' ' + str(row['Field2'])
                     else:
                         company_dict[row['Field1']] = row['Field2']
-
+    
         df_wide = pd.DataFrame(processed)
         # Remove trailing 'map/' from HOMES Webpage URL
         df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.rstrip('/')
