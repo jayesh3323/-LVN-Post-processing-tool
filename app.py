@@ -50,6 +50,8 @@ with tab1:
                 seen_companies.add(company2)
     
         df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
+        # Remove duplicates based on all columns
+        df_clean = df_clean.drop_duplicates()
         return df_clean
 
     if suumo_file is not None:
@@ -58,13 +60,13 @@ with tab1:
         else:
             df_suumo = pd.read_excel(suumo_file)
 
-        st.subheader("Preview of Uploaded SUUMO Data")
-        st.dataframe(df_suumo.head())
-
         cleaned_suumo = clean_suumo(df_suumo)
 
-        st.subheader("Preview of Cleaned SUUMO Data")
-        st.dataframe(cleaned_suumo.head())
+        # Display row count per prefecture
+        prefecture_counts = cleaned_suumo['Prefecture'].value_counts()
+        st.subheader("Row Counts per Prefecture (SUUMO)")
+        for prefecture, count in prefecture_counts.items():
+            st.write(f"{prefecture}: {count} rows")
 
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
@@ -152,6 +154,8 @@ with tab2:
         df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.replace('map$', '', regex=True)
         # Remove '地図を見る' from 所在地
         df_wide['所在地'] = df_wide['所在地'].str.replace('地図を見る', '', regex=False).str.strip()
+        # Remove duplicates based on all columns
+        df_wide = df_wide.drop_duplicates()
         return df_wide
 
     if homes_file is not None:
@@ -160,13 +164,7 @@ with tab2:
         else:
             df_homes = pd.read_excel(homes_file, engine="openpyxl")
 
-        st.subheader("Preview of Uploaded HOMES Data")
-        st.dataframe(df_homes.head())
-
         cleaned_homes = clean_homes(df_homes)
-
-        st.subheader("Preview of Cleaned HOMES Data")
-        st.dataframe(cleaned_homes.head())
 
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
