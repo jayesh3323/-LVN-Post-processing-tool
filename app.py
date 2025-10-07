@@ -51,6 +51,7 @@ with tab1:
     
         df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
         # Remove duplicates based on all columns
+        df_clean = df_clean.drop_duplicates()
         return df_clean
 
     if suumo_file is not None:
