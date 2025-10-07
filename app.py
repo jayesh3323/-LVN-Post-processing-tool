@@ -84,7 +84,6 @@ with tab1:
                     # Display prefecture row counts
                     if not cleaned_suumo.empty:
                         prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
-                        st.subheader("SUUMO Prefecture Row Counts")
                     
 
                         buffer = BytesIO()
