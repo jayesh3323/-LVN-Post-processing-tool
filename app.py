@@ -6,7 +6,7 @@ from io import BytesIO
 st.set_page_config(page_title="Excel Data Cleaner", layout="centered")
 st.title("📊 Excel Data Cleaner")
 
-st.write("Choose the data source, upload your Excel file, clean it, and download the processed file.")
+st.write("Choose the data source, upload one or more Excel/CSV files, clean them, and download the processed file. **Hold Ctrl (Windows) or Cmd (Mac) to select multiple files.**")
 
 # Tabs for SUUMO and HOMES
 tab1, tab2 = st.tabs(["SUUMO", "HOMES"])
@@ -14,7 +14,13 @@ tab1, tab2 = st.tabs(["SUUMO", "HOMES"])
 # ---------- SUUMO Tab ----------
 with tab1:
     st.header("SUUMO Data Cleaner")
-    suumo_files = st.file_uploader("Upload SUUMO Excel files", type=["xlsx", "csv"], key="suumo_uploader", accept_multiple_files=True)
+    suumo_files = st.file_uploader(
+        "Upload SUUMO Excel/CSV files",
+        type=["xlsx", "csv"],
+        key="suumo_uploader",
+        accept_multiple_files=True,
+        help="Select one or more files. Hold Ctrl (Windows) or Cmd (Mac) to select multiple files."
+    )
 
     def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
         output_rows = []
@@ -56,42 +62,56 @@ with tab1:
 
     if suumo_files:
         dfs = []
-        for suumo_file in suumo_files:
-            if suumo_file.name.endswith(".csv"):
-                df = pd.read_csv(suumo_file)
-            else:
-                df = pd.read_excel(suumo_file)
-            dfs.append(df)
+        required_cols = ['Text', 'Field1_text', 'Field1_links', 'Field2', 'Field3', 'Field4_text', 'Field4_links', 'Field5', 'Field6']
+        try:
+            for suumo_file in suumo_files:
+                if suumo_file.name.endswith(".csv"):
+                    df = pd.read_csv(suumo_file)
+                else:
+                    df = pd.read_excel(suumo_file)
+                # Check required columns
+                if not all(col in df.columns for col in required_cols):
+                    st.error(f"File '{suumo_file.name}' does not contain all required SUUMO columns: {', '.join(required_cols)}")
+                    break
+                dfs.append(df)
+            else:  # Executes if no break occurs (all files have required columns)
+                if not dfs:
+                    st.error("No valid files were uploaded.")
+                else:
+                    df_suumo = pd.concat(dfs, ignore_index=True)
+                    cleaned_suumo = clean_suumo(df_suumo)
 
-        if dfs:
-            df_suumo = pd.concat(dfs, ignore_index=True)
-            required_cols = ['Text', 'Field1_text', 'Field1_links', 'Field2', 'Field3', 'Field4_text', 'Field4_links', 'Field5', 'Field6']
-            if not all(col in df_suumo.columns for col in required_cols):
-                st.error("Uploaded files do not have the required columns for SUUMO.")
-            else:
-                cleaned_suumo = clean_suumo(df_suumo)
+                    # Display prefecture row counts
+                    if not cleaned_suumo.empty:
+                        prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
+                        st.subheader("SUUMO Prefecture Row Counts")
+                        for prefecture, count in prefecture_counts.items():
+                            st.write(f"{prefecture}: {count} rows")
 
-                # Display prefecture row counts
-                if not cleaned_suumo.empty:
-                    prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
-                    st.subheader("SUUMO Prefecture Row Counts")
-                    for prefecture, count in prefecture_counts.items():
-                        st.write(f"{prefecture}: {count} rows")
-
-                buffer = BytesIO()
-                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                    cleaned_suumo.to_excel(writer, index=False, sheet_name="CleanedSUUMO")
-                st.download_button(
-                    label="⬇️ Download Cleaned SUUMO Excel",
-                    data=buffer.getvalue(),
-                    file_name="cleaned_suumo.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                        buffer = BytesIO()
+                        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                            cleaned_suumo.to_excel(writer, index=False, sheet_name="CleanedSUUMO")
+                        st.download_button(
+                            label="⬇️ Download Cleaned SUUMO Excel",
+                            data=buffer.getvalue(),
+                            file_name="cleaned_suumo.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    else:
+                        st.error("No data after cleaning. Please check your input files.")
+        except Exception as e:
+            st.error(f"Error processing files: {str(e)}")
 
 # ---------- HOMES Tab ----------
 with tab2:
     st.header("HOMES Data Cleaner")
-    homes_files = st.file_uploader("Upload HOMES Excel files", type=["xlsx", "csv"], key="homes_uploader", accept_multiple_files=True)
+    homes_files = st.file_uploader(
+        "Upload HOMES Excel/CSV files",
+        type=["xlsx", "csv"],
+        key="homes_uploader",
+        accept_multiple_files=True,
+        help="Select one or more files. Hold Ctrl (Windows) or Cmd (Mac) to select multiple files."
+    )
     
     def is_katakana_or_space(c):
         if c in (' ', '　'):
@@ -170,36 +190,43 @@ with tab2:
 
     if homes_files:
         dfs = []
-        for homes_file in homes_files:
-            if homes_file.name.endswith(".csv"):
-                df = pd.read_csv(homes_file)
-            else:
-                df = pd.read_excel(homes_file, engine="openpyxl")
-            dfs.append(df)
+        required_cols = ['Company_Name', 'Link_to_the_Homepage', 'URL', 'Field1', 'Field2']
+        try:
+            for homes_file in homes_files:
+                if homes_file.name.endswith(".csv"):
+                    df = pd.read_csv(homes_file)
+                else:
+                    df = pd.read_excel(homes_file, engine="openpyxl")
+                # Check required columns
+                if not all(col in df.columns for col in required_cols):
+                    st.error(f"File '{homes_file.name}' does not contain all required HOMES columns: {', '.join(required_cols)}")
+                    break
+                dfs.append(df)
+            else:  # Executes if no break occurs (all files have required columns)
+                if not dfs:
+                    st.error("No valid files were uploaded.")
+                else:
+                    df_homes = pd.concat(dfs, ignore_index=True)
+                    cleaned_homes = clean_homes(df_homes)
 
-        if dfs:
-            df_homes = pd.concat(dfs, ignore_index=True)
-            required_cols = ['Company_Name', 'Link_to_the_Homepage', 'URL', 'Field1', 'Field2']
-            if not all(col in df_homes.columns for col in required_cols):
-                st.error("Uploaded files do not have the required columns for HOMES.")
-            else:
-                cleaned_homes = clean_homes(df_homes)
+                    # Display prefecture row counts
+                    if not cleaned_homes.empty:
+                        cleaned_homes['Prefecture'] = cleaned_homes['所在地'].str.extract(r'^([^都道府県]+[都道府県])')
+                        prefecture_counts = cleaned_homes['Prefecture'].value_counts().sort_index()
+                        st.subheader("HOMES Prefecture Row Counts")
+                        for prefecture, count in prefecture_counts.items():
+                            st.write(f"{prefecture}: {count} rows")
 
-                # Display prefecture row counts (assuming Prefecture is part of the data or derived)
-                if not cleaned_homes.empty:
-                    # Assuming '所在地' contains prefecture information; extract it if needed
-                    cleaned_homes['Prefecture'] = cleaned_homes['所在地'].str.extract(r'^([^都道府県]+[都道府県])')
-                    prefecture_counts = cleaned_homes['Prefecture'].value_counts().sort_index()
-                    st.subheader("HOMES Prefecture Row Counts")
-                    for prefecture, count in prefecture_counts.items():
-                        st.write(f"{prefecture}: {count} rows")
-
-                buffer = BytesIO()
-                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                    cleaned_homes.to_excel(writer, index=False, sheet_name="CleanedHOMES")
-                st.download_button(
-                    label="⬇️ Download Cleaned HOMES Excel",
-                    data=buffer.getvalue(),
-                    file_name="cleaned_homes.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                        buffer = BytesIO()
+                        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                            cleaned_homes.to_excel(writer, index=False, sheet_name="CleanedHOMES")
+                        st.download_button(
+                            label="⬇️ Download Cleaned HOMES Excel",
+                            data=buffer.getvalue(),
+                            file_name="cleaned_homes.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    else:
+                        st.error("No data after cleaning. Please check your input files.")
+        except Exception as e:
+            st.error(f"Error processing files: {str(e)}")
