@@ -85,8 +85,7 @@ with tab1:
                     if not cleaned_suumo.empty:
                         prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
                         st.subheader("SUUMO Prefecture Row Counts")
-                        for prefecture, count in prefecture_counts.items():
-                            st.write(f"{prefecture}: {count} rows")
+                    
 
                         buffer = BytesIO()
                         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
@@ -213,9 +212,7 @@ with tab2:
                     if not cleaned_homes.empty:
                         cleaned_homes['Prefecture'] = cleaned_homes['所在地'].str.extract(r'^([^都道府県]+[都道府県])')
                         prefecture_counts = cleaned_homes['Prefecture'].value_counts().sort_index()
-                        st.subheader("HOMES Prefecture Row Counts")
-                        for prefecture, count in prefecture_counts.items():
-                            st.write(f"{prefecture}: {count} rows")
+                    
 
                         buffer = BytesIO()
                         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
