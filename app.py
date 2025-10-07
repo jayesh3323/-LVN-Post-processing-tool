@@ -14,7 +14,7 @@ tab1, tab2 = st.tabs(["SUUMO", "HOMES"])
 # ---------- SUUMO Tab ----------
 with tab1:
     st.header("SUUMO Data Cleaner")
-    suumo_file = st.file_uploader("Upload SUUMO Excel file", type=["xlsx", "csv"], key="suumo_uploader")
+    suumo_files = st.file_uploader("Upload SUUMO Excel files", type=["xlsx", "csv"], key="suumo_uploader", accept_multiple_files=True)
 
     def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
         output_rows = []
@@ -51,37 +51,47 @@ with tab1:
     
         df_clean = pd.DataFrame(output_rows, columns=['Prefecture', 'Company Name', 'Link to Suumo Webpage', 'Address', 'TEL'])
         # Remove duplicates based on all columns
-        df_clean = df_clean.drop_duplicates()
+        df_clean = df_clean.drop_duplicates().reset_index(drop=True)
         return df_clean
 
-    if suumo_file is not None:
-        if suumo_file.name.endswith(".csv"):
-            df_suumo = pd.read_csv(suumo_file)
-        else:
-            df_suumo = pd.read_excel(suumo_file)
+    if suumo_files:
+        dfs = []
+        for suumo_file in suumo_files:
+            if suumo_file.name.endswith(".csv"):
+                df = pd.read_csv(suumo_file)
+            else:
+                df = pd.read_excel(suumo_file)
+            dfs.append(df)
 
-        cleaned_suumo = clean_suumo(df_suumo)
+        if dfs:
+            df_suumo = pd.concat(dfs, ignore_index=True)
+            required_cols = ['Text', 'Field1_text', 'Field1_links', 'Field2', 'Field3', 'Field4_text', 'Field4_links', 'Field5', 'Field6']
+            if not all(col in df_suumo.columns for col in required_cols):
+                st.error("Uploaded files do not have the required columns for SUUMO.")
+            else:
+                cleaned_suumo = clean_suumo(df_suumo)
 
-        # Display row count per prefecture
-        prefecture_counts = cleaned_suumo['Prefecture'].value_counts()
-        st.subheader("Row Counts per Prefecture (SUUMO)")
-        for prefecture, count in prefecture_counts.items():
-            st.write(f"{prefecture}: {count} rows")
+                # Display prefecture row counts
+                if not cleaned_suumo.empty:
+                    prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
+                    st.subheader("SUUMO Prefecture Row Counts")
+                    for prefecture, count in prefecture_counts.items():
+                        st.write(f"{prefecture}: {count} rows")
 
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-            cleaned_suumo.to_excel(writer, index=False, sheet_name="CleanedSUUMO")
-        st.download_button(
-            label="⬇️ Download Cleaned SUUMO Excel",
-            data=buffer.getvalue(),
-            file_name="cleaned_suumo.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                buffer = BytesIO()
+                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                    cleaned_suumo.to_excel(writer, index=False, sheet_name="CleanedSUUMO")
+                st.download_button(
+                    label="⬇️ Download Cleaned SUUMO Excel",
+                    data=buffer.getvalue(),
+                    file_name="cleaned_suumo.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
 # ---------- HOMES Tab ----------
 with tab2:
     st.header("HOMES Data Cleaner")
-    homes_file = st.file_uploader("Upload HOMES Excel file", type=["xlsx", "csv"], key="homes_uploader")
+    homes_files = st.file_uploader("Upload HOMES Excel files", type=["xlsx", "csv"], key="homes_uploader", accept_multiple_files=True)
     
     def is_katakana_or_space(c):
         if c in (' ', '　'):
@@ -155,23 +165,41 @@ with tab2:
         # Remove '地図を見る' from 所在地
         df_wide['所在地'] = df_wide['所在地'].str.replace('地図を見る', '', regex=False).str.strip()
         # Remove duplicates based on all columns
-        df_wide = df_wide.drop_duplicates()
+        df_wide = df_wide.drop_duplicates().reset_index(drop=True)
         return df_wide
 
-    if homes_file is not None:
-        if homes_file.name.endswith(".csv"):
-            df_homes = pd.read_csv(homes_file)
-        else:
-            df_homes = pd.read_excel(homes_file, engine="openpyxl")
+    if homes_files:
+        dfs = []
+        for homes_file in homes_files:
+            if homes_file.name.endswith(".csv"):
+                df = pd.read_csv(homes_file)
+            else:
+                df = pd.read_excel(homes_file, engine="openpyxl")
+            dfs.append(df)
 
-        cleaned_homes = clean_homes(df_homes)
+        if dfs:
+            df_homes = pd.concat(dfs, ignore_index=True)
+            required_cols = ['Company_Name', 'Link_to_the_Homepage', 'URL', 'Field1', 'Field2']
+            if not all(col in df_homes.columns for col in required_cols):
+                st.error("Uploaded files do not have the required columns for HOMES.")
+            else:
+                cleaned_homes = clean_homes(df_homes)
 
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-            cleaned_homes.to_excel(writer, index=False, sheet_name="CleanedHOMES")
-        st.download_button(
-            label="⬇️ Download Cleaned HOMES Excel",
-            data=buffer.getvalue(),
-            file_name="cleaned_homes.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                # Display prefecture row counts (assuming Prefecture is part of the data or derived)
+                if not cleaned_homes.empty:
+                    # Assuming '所在地' contains prefecture information; extract it if needed
+                    cleaned_homes['Prefecture'] = cleaned_homes['所在地'].str.extract(r'^([^都道府県]+[都道府県])')
+                    prefecture_counts = cleaned_homes['Prefecture'].value_counts().sort_index()
+                    st.subheader("HOMES Prefecture Row Counts")
+                    for prefecture, count in prefecture_counts.items():
+                        st.write(f"{prefecture}: {count} rows")
+
+                buffer = BytesIO()
+                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                    cleaned_homes.to_excel(writer, index=False, sheet_name="CleanedHOMES")
+                st.download_button(
+                    label="⬇️ Download Cleaned HOMES Excel",
+                    data=buffer.getvalue(),
+                    file_name="cleaned_homes.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
