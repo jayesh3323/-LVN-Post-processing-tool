@@ -6,7 +6,7 @@ from io import BytesIO
 st.set_page_config(page_title="Excel Data Cleaner", layout="centered")
 st.title("📊 Excel Data Cleaner")
 
-st.write("Choose the data source, upload one or more Excel/CSV files, clean them, and download the processed file. **Hold Ctrl (Windows) or Cmd (Mac) to select multiple files.**")
+st.write("Choose the data source, upload one or more Excel/CSV files, clean them, and download the processed file. **Hold Ctrl (for Windows) or Cmd (for Mac) to select multiple files.**")
 
 # Tabs for SUUMO and HOMES
 tab1, tab2 = st.tabs(["SUUMO", "HOMES"])
