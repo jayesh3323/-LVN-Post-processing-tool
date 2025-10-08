@@ -19,7 +19,7 @@ with tab1:
         type=["xlsx", "csv"],
         key="suumo_uploader",
         accept_multiple_files=True,
-        help="Select one or more files. Hold Ctrl (Windows) or Cmd (Mac) to select multiple files."
+        help="Select one or more files. Hold Ctrl (for Windows) or Cmd (for Mac) to select multiple files."
     )
 
     def clean_suumo(df: pd.DataFrame) -> pd.DataFrame:
