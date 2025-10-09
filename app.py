@@ -81,8 +81,8 @@ with tab1:
                     df_suumo = pd.concat(dfs, ignore_index=True)
                     cleaned_suumo = clean_suumo(df_suumo)
 
-                    # # Display prefecture row counts
-                    # if not cleaned_suumo.empty:
+                    # Display prefecture row counts
+                    if not cleaned_suumo.empty:
                     #     prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
                     #     st.subheader("SUUMO Prefecture Row Counts")
                     #     for prefecture, count in prefecture_counts.items():
@@ -157,8 +157,8 @@ with tab2:
                     df_homes = pd.concat(dfs, ignore_index=True)
                     cleaned_homes = clean_homes(df_homes)
 
-                    # # Display prefecture row counts
-                    # if not cleaned_homes.empty:
+                    # Display prefecture row counts
+                    if not cleaned_homes.empty:
                     #     cleaned_homes['Prefecture'] = cleaned_homes['Address'].str.extract(r'^([^都道府県]+[都道府県])')
                     #     prefecture_counts = cleaned_homes['Prefecture'].value_counts().sort_index()
                     #     st.subheader("HOMES Prefecture Row Counts")
