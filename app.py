@@ -84,7 +84,9 @@ with tab1:
                     # Display prefecture row counts
                     if not cleaned_suumo.empty:
                         prefecture_counts = cleaned_suumo['Prefecture'].value_counts().sort_index()
-                    
+                        st.subheader("SUUMO Prefecture Row Counts")
+                        for prefecture, count in prefecture_counts.items():
+                            st.write(f"{prefecture}: {count} rows")
 
                         buffer = BytesIO()
                         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
@@ -110,85 +112,33 @@ with tab2:
         accept_multiple_files=True,
         help="Select one or more files. Hold Ctrl (Windows) or Cmd (Mac) to select multiple files."
     )
-    
-    def is_katakana_or_space(c):
-        if c in (' ', '　'):
-            return True
-        try:
-            return 'KATAKANA' in unicodedata.name(c)
-        except ValueError:
-            return False
-    
-    def extract_kanji(name):
-        name = name.strip()
-        i = len(name)
-        while i > 0:
-            i -= 1
-            if not is_katakana_or_space(name[i]):
-                break
-        return name[:i + 1].strip()
-    
+
     def clean_homes(df: pd.DataFrame) -> pd.DataFrame:
         """
         Cleans HOMES company data:
-        - Preserve first occurrence order
-        - Convert company name to kanji
-        - Remove duplicates and unwanted text
+        - Maps input columns to required output columns
+        - Removes 'map/' from Link to HOMES webpage
+        - Removes duplicates
         """
         df = df.copy()
-        # Fill repeated URLs if missing
-        df['Link_to_the_Homepage'] = df['Link_to_the_Homepage'].fillna(method='ffill')
-        df['URL'] = df['URL'].fillna(method='ffill')
-    
-        processed = []
-        seen = {}  # preserve order
-    
-        for _, row in df.iterrows():
-            company_key = str(row['Company_Name'])
-            if company_key not in seen:
-                company_dict = {
-                    'Company_Name': None,  # kanji
-                    'Link_to_the_Homepage': row['Link_to_the_Homepage'],
-                    'HOMES Webpage URL': row['URL'],
-                    '所在地': '',
-                    '交通': '',
-                    '営業時間': '',
-                    '定休日': '',
-                    'TEL': '',
-                    'FAX': '',
-                    '免許番号': '',
-                    '所属団体名': '',
-                    '保証協会': '',
-                    '屋号': ''
-                }
-                processed.append(company_dict)
-                seen[company_key] = company_dict
-    
-            company_dict = seen[company_key]
-    
-            if row['Field1'] == '会社名':
-                cleaned_field = str(row['Field2']).replace("ホームページ", "").replace("\n", " ").strip()
-                company_dict['Company_Name'] = extract_kanji(cleaned_field)
-            else:
-                if row['Field1'] in company_dict:
-                    if company_dict[row['Field1']]:
-                        company_dict[row['Field1']] += ' ' + str(row['Field2'])
-                    else:
-                        company_dict[row['Field1']] = row['Field2']
-    
-        df_wide = pd.DataFrame(processed)
-        # Remove trailing 'map/' from HOMES Webpage URL
-        df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.rstrip('/')
-        df_wide['HOMES Webpage URL'] = df_wide['HOMES Webpage URL'].str.replace('map$', '', regex=True)
-        # Remove '地図を見る' from 所在地
-        df_wide['所在地'] = df_wide['所在地'].str.replace('地図を見る', '', regex=False).str.strip()
+        # Rename columns to match desired output
+        df = df.rename(columns={
+            'Text': 'Company_Name',
+            'Text1': 'Address',
+            'URL': 'Homepage_URL',
+            'URL1': 'Link_to_HOMES_webpage',
+            'Text2': 'TEL'
+        })
+        # Remove trailing 'map/' from Link_to_HOMES_webpage
+        df['Link_to_HOMES_webpage'] = df['Link_to_HOMES_webpage'].str.rstrip('/')
+        df['Link_to_HOMES_webpage'] = df['Link_to_HOMES_webpage'].str.replace('map$', '', regex=True)
         # Remove duplicates based on all columns
-        df_wide = df_wide.drop_duplicates().reset_index(drop=True)
-        return df_wide
+        df_clean = df[['Company_Name', 'Address', 'Homepage_URL', 'Link_to_HOMES_webpage', 'TEL']].drop_duplicates().reset_index(drop=True)
+        return df_clean
 
     if homes_files:
         dfs = []
-        required_cols = ['Company_Name', 'Link_to_the_Homepage', 'URL', 'Field1', 'Field2']
+        required_cols = ['Text', 'Text1', 'URL', 'URL1', 'Text2']
         try:
             for homes_file in homes_files:
                 if homes_file.name.endswith(".csv"):
@@ -209,9 +159,11 @@ with tab2:
 
                     # Display prefecture row counts
                     if not cleaned_homes.empty:
-                        cleaned_homes['Prefecture'] = cleaned_homes['所在地'].str.extract(r'^([^都道府県]+[都道府県])')
+                        cleaned_homes['Prefecture'] = cleaned_homes['Address'].str.extract(r'^([^都道府県]+[都道府県])')
                         prefecture_counts = cleaned_homes['Prefecture'].value_counts().sort_index()
-                    
+                        st.subheader("HOMES Prefecture Row Counts")
+                        for prefecture, count in prefecture_counts.items():
+                            st.write(f"{prefecture}: {count} rows")
 
                         buffer = BytesIO()
                         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
